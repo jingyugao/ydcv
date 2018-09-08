@@ -12,6 +12,8 @@ import json
 import re
 import sys
 import platform
+import os
+import time 
 
 try:
     # Py3
@@ -215,6 +217,17 @@ def print_explanation(data, options):
 
     print()
 
+def simple_str(data):
+    ret=""
+    word=data[u'query']
+    if u'basic' not in data:
+        ret=word+"not fund\n"
+        return
+    explains=data[u'basic'][u'explains']
+    ret=word+":["
+    for exp in explains:
+        ret+="\n\t"+exp
+    return ret+"\n\t]\n"
 
 def lookup_word(word):
     word = quote(word)
@@ -223,16 +236,13 @@ def lookup_word(word):
     else:
         pass
     try:
-        data = urlopen(
-            "http://fanyi.youdao.com/openapi.do?keyfrom={0}&"
-            "key={1}&type=data&doctype=json&version=1.2&q={2}"
-            .format(API, API_KEY, word)).read().decode("utf-8")
+        data = urlopen("http://fanyi.youdao.com/openapi.do?keyfrom={0}&key={1}&type=data&doctype=json&version=1.2&q={2}".format(API, API_KEY, word)).read().decode("utf-8")
     except IOError:
         print("Network is unavailable")
     else:
-        print_explanation(json.loads(data), options)
-
-
+        jdata=json.loads(data)
+        print_explanation(jdata, options)
+        dumpfile.write(simple_str(jdata))
 def arg_parse():
     parser = ArgumentParser(description="Youdao Console Version")
     parser.add_argument('-f', '--full',
@@ -280,10 +290,17 @@ def arg_parse():
                         help="words to lookup, or quoted sentences to translate.")
     return parser.parse_args()
 
-
 def main():
     options._options = arg_parse()
+    ydcv_path=os.environ['HOME']+"/.ydcv"
+    if not os.path.exists(ydcv_path):
+        os.mkdir(ydcv_path)
 
+    
+    dname=ydcv_path+"/"+"history."+time.strftime("%Y-%m-%d", time.localtime())
+    
+    global dumpfile
+    dumpfile=open(dname,"a",buffering=1)
     if options.words:
         for word in options.words:
             lookup_word(word)
